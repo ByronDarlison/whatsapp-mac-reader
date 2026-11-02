@@ -96,13 +96,25 @@ permission.
 
 ## Basic usage
 
-Print the last 24 hours as readable text:
+By default the reader saves its output to a file in your Downloads folder and
+prints the full path it wrote. The file name matches the output format:
+
+| `--output`        | File written                        |
+| ----------------- | ----------------------------------- |
+| `text` (default)  | `~/Downloads/whatsapp_messages.txt`  |
+| `json`            | `~/Downloads/whatsapp_messages.json` |
+| `xml` or `claude` | `~/Downloads/whatsapp_messages.xml`  |
+
+The Downloads folder is created if it is missing. An existing file with the same
+name is replaced, and new files are readable only by your user account.
+
+Save the last 24 hours as readable text:
 
 ```bash
 python3 whatsapp_reader.py
 ```
 
-Print the last 72 hours:
+Save the last 72 hours:
 
 ```bash
 python3 whatsapp_reader.py --hours 72
@@ -120,21 +132,30 @@ Generate XML suitable for structured downstream processing:
 python3 whatsapp_reader.py --hours 72 --output xml
 ```
 
-Save explicitly to a file:
+Save to a different location with `--save`:
 
 ```bash
 python3 whatsapp_reader.py \
   --hours 72 \
   --output json \
-  --save ~/Downloads/whatsapp_output.json
+  --save ~/Documents/whatsapp/latest.json
 ```
 
-Saving is deliberately opt-in because exports contain private message content.
-Without `--save`, output is written to the terminal.
+Print to the terminal instead of writing a file with `--stdout`:
+
+```bash
+python3 whatsapp_reader.py --hours 72 --stdout
+```
+
+`--save` and `--stdout` cannot be used together.
+
+Exports contain private message content. Move or delete the saved file when you
+no longer need it.
 
 ### Database discovery
 
-Show the selected database and its schema:
+Show the selected database and its schema. Discovery prints to the terminal
+unless you add `--save PATH`:
 
 ```bash
 python3 whatsapp_reader.py --discover

@@ -21,6 +21,8 @@ from pathlib import Path
 from typing import Any
 
 SKIP_DIRS = {"Media", "Message", "Logs", "Caches", "tmp", "StickerThumbs", "Stickers"}
+DEFAULT_OUTPUT_STEM = "whatsapp_messages"
+OUTPUT_EXTENSIONS = {"text": "txt", "json": "json", "xml": "xml", "claude": "xml"}
 KNOWN_DB_PATH = (
     Path.home()
     / "Library"
@@ -377,23 +379,52 @@ def format_xml(conversations: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--hours", type=int, default=24, help="History window in hours")
     parser.add_argument("--db", help="Explicit path to ChatStorage.sqlite")
     parser.add_argument("--discover", action="store_true", help="Print database candidates and schema")
     parser.add_argument("--output", choices=("text", "json", "xml", "claude"), default="text")
-    parser.add_argument("--save", metavar="PATH", help="Write output to PATH instead of stdout")
+    destination = parser.add_mutually_exclusive_group()
+    destination.add_argument(
+        "--save",
+        metavar="PATH",
+        help="Write output to PATH instead of the default file in ~/Downloads",
+    )
+    destination.add_argument(
+        "--stdout",
+        action="store_true",
+        help="Print output to the terminal instead of writing a file",
+    )
     parser.add_argument(
         "--whisper-python",
         default=os.environ.get("WHATSAPP_WHISPER_PYTHON"),
         help="Python executable with mlx-whisper installed; enables voice transcription",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def main() -> int:
-    args = parse_args()
+def default_output_path(output: str) -> Path:
+    """Return ~/Downloads/whatsapp_messages.<ext> for the chosen --output."""
+    extension = OUTPUT_EXTENSIONS[output]
+    return Path(os.path.expanduser("~/Downloads")) / f"{DEFAULT_OUTPUT_STEM}.{extension}"
+
+
+def write_output(output: str, destination: Path) -> Path:
+    """Write output to destination, readable only by the current user."""
+    destination = destination.expanduser()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(output)
+        if not output.endswith("\n"):
+            handle.write("\n")
+    return destination.resolve()
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     if args.hours <= 0:
         print("ERROR: --hours must be greater than zero.", file=sys.stderr)
         return 2
@@ -434,13 +465,13 @@ def main() -> int:
             "xml": format_xml,
         }[output_format](conversations)
 
-    if args.save:
-        destination = Path(args.save).expanduser()
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(output, encoding="utf-8")
-        print(f"Saved to {destination}", file=sys.stderr)
-    else:
+    if args.stdout or (args.discover and not args.save):
         print(output)
+        return 0
+
+    destination = Path(args.save) if args.save else default_output_path(args.output)
+    written = write_output(output, destination)
+    print(f"Saved to {written}")
     return 0
 
 
