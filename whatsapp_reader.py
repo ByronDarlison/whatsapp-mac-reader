@@ -415,6 +415,7 @@ def write_output(output: str, destination: Path) -> Path:
     destination = destination.expanduser()
     destination.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(fd, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as handle:
         handle.write(output)
         if not output.endswith("\n"):

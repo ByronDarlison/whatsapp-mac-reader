@@ -150,6 +150,15 @@ class OutputDestinationTests(unittest.TestCase):
         self.assertFalse((self.home / "Downloads").exists())
         self.assertEqual(out.strip(), f"Saved to {target.resolve()}")
 
+    def test_existing_file_is_tightened_to_owner_only(self):
+        target = self.tmp / "existing.txt"
+        target.write_text("old", encoding="utf-8")
+        os.chmod(target, 0o644)
+        self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o644)
+        reader.write_output("new", target)
+        self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
+        self.assertEqual(target.read_text(encoding="utf-8"), "new\n")
+
     def test_stdout_prints_and_writes_no_file(self):
         code, out, _ = self.run_main("--stdout")
         self.assertEqual(code, 0)

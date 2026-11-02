@@ -8,7 +8,9 @@
 - Keep `--save PATH` to write somewhere else.
 - Add `--stdout` to print to the terminal instead, as 1.0.0 did by default.
 - Reject `--save` and `--stdout` together with a clear error.
-- Write saved files readable only by the current user.
+- Write saved files readable only by the current user, including when
+  replacing an existing file.
+- Print the `Saved to <path>` message to stdout instead of stderr.
 - Keep `--discover` printing to the terminal unless `--save` is given.
 - The chat database is still opened read-only, and nothing uses the clipboard.
 
